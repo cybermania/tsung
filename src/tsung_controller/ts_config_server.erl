@@ -49,7 +49,7 @@
 %%--------------------------------------------------------------------
 %% External exports
 -export([start_link/1, read_config/1, read_config/2, get_req/2, get_next_session/1,
-         get_client_config/1, newbeams/1, newbeam/2,
+         get_client_config/1, newbeams/1, newbeam/2, stop/0,
          get_monitor_hosts/0, encode_filename/1, decode_filename/1,
          endlaunching/1, status/0, start_file_server/1, get_user_agents/0,
          get_client_config/2, get_user_param/1, get_user_port/1, get_jobs_state/0 ]).
@@ -87,6 +87,9 @@
 %%--------------------------------------------------------------------
 start_link(LogDir) ->
     gen_server:start_link({global, ?MODULE}, ?MODULE, [LogDir], []).
+
+stop() ->
+    gen_server:cast({global, ?MODULE}, {abort}).
 
 status() ->
     gen_server:call({global, ?MODULE}, {status}).
@@ -393,7 +396,10 @@ handle_cast({newbeams, HostList}, State=#state{logdir   = LogDir,
             MaxParalRemote=  NNodes * MinBeamPerNode + MaxStartup - MinBeamPerNode,
             %% now try to not overload the controller:
             MaxLaunchPerCore = Config#config.max_ssh_startup,
-            Ncores = erlang:system_info(logical_processors_available),
+            Ncores = case erlang:system_info(logical_processors_available) of
+                         unknown -> erlang:system_info(logical_processors);
+                         N -> N
+                     end,
             MaxParal = min(Ncores * MaxLaunchPerCore, MaxParalRemote),
             ?LOGF("Try to start at most ~p remote nodes in parallel (cores: ~p, Max remote: ~p)",
                   [MaxParal, Ncores, MaxParalRemote], ?INFO),
@@ -464,6 +470,11 @@ handle_cast({newbeam, Host, Arrivals}, State=#state{last_beam_id = NodeId, confi
 
 handle_cast({end_launching, _Node}, State=#state{ending_beams=Beams}) ->
     {noreply, State#state{ending_beams = Beams+1}};
+
+handle_cast({abort}, State) ->
+    ts_mon:abort(),
+    ?LOG("Tsung test aborted by request !~n",?EMERG),
+    {stop, normal, State};
 
 handle_cast(Msg, State) ->
     ?LOGF("Unknown cast ~p ! ~n",[Msg],?WARN),

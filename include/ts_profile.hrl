@@ -58,6 +58,7 @@
          ssl_versions  = negotiate, % for ssl only
          bosh_path = "/http-bind/",  % for bash only
          tcp_reuseaddr  = false,  % for tcp reuseaddr
+         tcp_reuseport  = false,  % for tcp reuseport
          ip_transparent = false,  % set IP_TRANSPARENT option on the socket
          websocket_path = "/chat",  % for websocket only
          websocket_frame = "binary",  % for websocket only
@@ -100,7 +101,7 @@
 
          session_id,
          request,     % current request specs
-         persistent,  % if true, don't exit when connexion is closed
+         persistent,  % if true, don't exit when connection is closed
          timestamp,   % previous message date
          starttime,   % date of the beginning of the session
          count,       % number of requests waiting to be sent
@@ -112,8 +113,9 @@
                      % (Waiting for more data)
          buffer = <<>>, % buffer when we have to keep the response (we need
                      % all the response to do pattern matching)
-         session,    % record of session status; depends on 'clienttype' (cas be used to store data dynamically generated during the
-                     % session (Cookies for examples))
+         session,    % record of session status; depends on 'clienttype' (can be
+                     % used to store data dynamically generated during the
+                     % session (e.g. cookies))
          datasize=0,
          id,         % user id
          size_mon_thresh=?size_mon_thresh, % if rcv data is > to this, update stats
